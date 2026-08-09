@@ -87,21 +87,6 @@ def crawler():
 
         session.commit()
 
-def observador_de_dia(ultimo_dia_verificado):
-    """Verifica se o dia mudou, caso tenha mudado, extrai os dados
-    e atualiza oa variável ultimo_dia_verificado"""
-
-    hoje = date.today()
-
-    if hoje != ultimo_dia_verificado:
-        try:
-            crawler()
-            print('Estoque extraído com sucesso!')
-
-        except Exception as e:
-            print(f'Houve um erro. \n Erro: {e}')
-
-        ultimo_dia_verificado = hoje
 
 def main():
     create_db_and_tables()
@@ -109,14 +94,6 @@ def main():
 
     crawler()
 
-    print(f"| Observador iniciou. | \n | Dia de início: {ultimo_dia_verificado} |")
-    while True:
-        observador_de_dia(ultimo_dia_verificado)
-
-        # Sleep para evitar alto uso de CPU (aqui, verifica a cada 1 hora)
-        time.sleep(3600)
-
-ultimo_dia_verificado = date.today()
 
 if __name__ == "__main__":
     main()
