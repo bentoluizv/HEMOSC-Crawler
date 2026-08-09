@@ -1,5 +1,6 @@
+import time
 import requests
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from bs4 import BeautifulSoup
 from typing import List, Optional
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, func, select
@@ -23,7 +24,6 @@ class RegistroEstoqueHemosc(SQLModel, table=True):
 
     tipo_sanguineo: Optional[TipoSanguineo] = Relationship(back_populates='registros_estoque')
 
-
 engine = create_engine('sqlite:///hemosc.db')
 
 def create_db_and_tables():
@@ -42,19 +42,9 @@ def populate_database():
 
             session.commit()
 
-
-""" 
- - O estoque está ideal. Continue nos acompanhando, e agende sua doação quando necessário.
- - Continue doando para manter os estoques adequados
- - Venha doar sangue, precisamos de você.
- - Venha doar e nos ajude a divulgar essa necessidade.
- - Precisamos de você!
-"""
-
-
-def main():
-    create_db_and_tables()
-    populate_database()
+def crawler():
+    """Abre a página do HEMOSC e grava os estoques de sangue atuais para cada
+    tipo sanguíneo"""
 
     # Abre a página do HEMOSC
     response = requests.get('https://www.hemosc.org.br/')
@@ -67,8 +57,12 @@ def main():
     estoque_atual_por_tipo = estoque_sangues_soup[0].find_all('div')
 
     # Relação de estado de estoque da página com o estado do banco
-    estados_de_estoque = {'Adequado':5, 'Estável':4, 'Reduzido':3, 'Alerta':2, 'Crítico':1}
-
+    estados_de_estoque = {
+                            'Adequado':5,
+                            'Estável':4,
+                            'Reduzido':3,
+                            'Alerta':2, 'Crítico':1
+                          }
 
     with Session(engine) as session:
         for tipo in estoque_atual_por_tipo:
@@ -81,19 +75,57 @@ def main():
 
             # Busca o tipo sanguineo no banco
             grupo_tipo_sanguineo = select(TipoSanguineo.id).where(TipoSanguineo.tipo_sanguineo == tipo_sanguineo)
-            
+
             # Busca identificador do estado do estoque no banco
             estado_do_estoque_hoje = estados_de_estoque[estoque_do_dia]
 
             # Registra o novo estado no banco
-            novo_registro = RegistroEstoqueHemosc(estado_do_estoque=estado_do_estoque_hoje, 
+            novo_registro = RegistroEstoqueHemosc(estado_do_estoque=estado_do_estoque_hoje,
                                                   tipo_sanguineo_id=grupo_tipo_sanguineo)
 
             session.add(novo_registro)
 
         session.commit()
-        
 
+def observador_de_dia(ultimo_dia_verificado):
+    """Verifica se o dia mudou, caso tenha mudado, extrai os dados
+    e atualiza oa variável ultimo_dia_verificado"""
+
+    hoje = date.today()
+
+    if hoje != ultimo_dia_verificado:
+        try:
+            crawler()
+            print('Estoque extraído com sucesso!')
+
+        except Exception as e:
+            print(f'Houve um erro. \n Erro: {e}')
+
+        ultimo_dia_verificado = hoje
+
+def main():
+    create_db_and_tables()
+    populate_database()
+
+    crawler()
+
+    print(f"| Observador iniciou. | \n | Dia de início: {ultimo_dia_verificado} |")
+    while True:
+        observador_de_dia(ultimo_dia_verificado)
+
+        # Sleep para evitar alto uso de CPU (aqui, verifica a cada 1 hora)
+        time.sleep(3600)
+
+ultimo_dia_verificado = date.today()
 
 if __name__ == "__main__":
     main()
+
+
+"""
+ - O estoque está ideal. Continue nos acompanhando, e agende sua doação quando necessário.
+ - Continue doando para manter os estoques adequados
+ - Venha doar sangue, precisamos de você.
+ - Venha doar e nos ajude a divulgar essa necessidade.
+ - Precisamos de você!
+"""
