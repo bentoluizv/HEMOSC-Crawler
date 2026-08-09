@@ -1,0 +1,12 @@
+[project]
+name = "hemosc"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bs4>=0.0.2",
+    "pip-system-certs>=5.3",
+    "requests>=2.34.2",
+    "sqlmodel>=0.0.39",
+]
