@@ -1,44 +1,40 @@
-name: Executar Scraper HEMOSC
+name: Executar Crawler Hemosc
 
 on:
   schedule:
-    # 09:00 UTC equivale às 06:00 no horário de Brasília (UTC-3)
+    # Roda diariamente às 09:00 UTC (06:00 horário de Brasília)
     - cron: '0 23 * * *'
-  workflow_dispatch: # Permite que você clique num botão para rodar manualmente quando quiser
+  workflow_dispatch: # Permite rodar o bot manualmente pelo painel do GitHub
 
 jobs:
-  run-scraper:
+  run-crawler:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Baixa o código do seu repositório para a máquina virtual do GitHub
-    - name: Clonar Repositório
-      uses: actions/checkout@v4
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
 
-    # 2. Instala a versão correta do Python
-    - name: Configurar Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
 
-    # 3. Instala o requests e beautifulsoup4 salvos no seu requirements.txt
-    - name: Instalar Dependências
-      run: |
-        python -m pip install --upgrade pip
-        pip install .
+      - name: Instalar dependências Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
 
-    # 4. Executa o seu script de scraping do HEMOSC
-    - name: Rodar Script de Scraping
-      run: python main.py
+      - name: Instalar navegadores e dependências do Playwright
+        run: |
+          playwright install firefox --with-deps
 
-        # 5. Salva o banco de dados SQLite atualizado de volta no seu GitHub automaticamente
-    - name: Salvar Banco de Dados no Repositório
-      run: |
-        git config --global user.name "GitHub Action Bot"
-        git config --global user.email "actions@github.com"
-        
-        # Garante que estamos rastreando o arquivo do banco de dados
-        git add hemosc.db
-        
-        # Verifica se houve mudanças no banco e faz o commit
-        git diff --quiet && git diff --staged --quiet || (git commit -m "Automação: Banco de dados SQLite atualizado" && git push)
+      - name: Rodar o Crawler
+        run: python main.py
+
+      - name: Salvar alterações no banco de dados
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add hemosc.db
+          git commit -m "Automated update hemosc.db [skip ci]" || exit 0
+          git push
