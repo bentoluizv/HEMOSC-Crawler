@@ -47,7 +47,8 @@ def crawler():
     tipo sanguíneo"""
 
     with sync_playwright() as p:
-        browser = p.firefox.launch(headless=False)
+        # Headless false para rodar localmente, true para rodar no actions
+        browser = p.firefox.launch(headless=True)
 
         context = browser.new_context(
             user_agent=(
