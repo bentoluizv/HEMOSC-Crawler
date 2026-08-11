@@ -123,3 +123,4 @@ if __name__ == "__main__":
  - Venha doar sangue, precisamos de você.
  - Venha doar e nos ajude a divulgar essa necessidade.
  - Precisamos de você!
+"""
