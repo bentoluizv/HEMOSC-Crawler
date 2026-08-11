@@ -60,7 +60,7 @@ def crawler():
 
         page = context.new_page()
 
-        page.goto('https://www.hemosc.org.br/', wait_until='networkidle')
+        page.goto('https://www.hemosc.org.br/', wait_until='domcontentloaded')
 
         html_hemosc = page.content()
 
