@@ -1,6 +1,6 @@
 import time
-import requests
-from datetime import date, datetime, timezone
+from playwright.sync_api import sync_playwright
+from datetime import datetime, timezone
 from bs4 import BeautifulSoup
 from typing import List, Optional
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, func, select
@@ -46,18 +46,34 @@ def crawler():
     """Abre a página do HEMOSC e grava os estoques de sangue atuais para cada
     tipo sanguíneo"""
 
-    # Abre a página do HEMOSC
-    response = requests.get('https://www.hemosc.org.br/')
-    soup = BeautifulSoup(response.text, 'html.parser')
+    with sync_playwright() as p:
+        browser = p.firefox.launch(headless=False)
+
+        context = browser.new_context(
+            user_agent=(
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                ' (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            ),
+            viewport={'width': 1280, 'height': 720},
+        )
+
+        page = context.new_page()
+
+        page.goto('https://www.hemosc.org.br/', wait_until='networkidle')
+
+        html_hemosc = page.content()
+
+
+    soup = BeautifulSoup(html_hemosc, 'html.parser')
 
     # Retorna a div com o estado dos estoques de sangue
-    estoque_sangues_soup = soup.find_all('div', class_='dirt_home_estq')
+    div_estoque_de_sangue = soup.find_all('div', class_='dirt_home_estq')
 
-    # Retorna uma lista das divs de cada tipo sanguineo e seu estado de estoque
-    estoque_atual_por_tipo = estoque_sangues_soup[0].find_all('div')
+    # Retorna a lista das divs de cada tipo sanguineo e seu estado de estoque
+    estoque_diario_de_sangue_por_tipo = div_estoque_de_sangue[0].find_all('div')
 
     # Relação de estado de estoque da página com o estado do banco
-    estados_de_estoque = {
+    dict_estados_de_estoque_banco = {
                             'Adequado':5,
                             'Estável':4,
                             'Reduzido':3,
@@ -65,19 +81,20 @@ def crawler():
                           }
 
     with Session(engine) as session:
-        for tipo in estoque_atual_por_tipo:
+        for estoque_por_tipo in estoque_diario_de_sangue_por_tipo:
 
-            # Busca o tipo sanguineo do site
-            tipo_sanguineo = tipo.find('img').get('alt').split('tipo ')[-1]
+            # Extrai o tipo sanguineo da tag img
+            tipo_sanguineo = estoque_por_tipo.find('img').get('alt').split('tipo ')[-1]
 
-            # Busca o estado do estoque do tipo sanguineo do site
-            estoque_do_dia = tipo.find('img').get('title').split(' - ')[0]
-
+            # Extrai o estoque atual do tipo sanguineo da tag img
+            estoque_do_dia = estoque_por_tipo.find('img').get('title').split(' - ')[0]
+            
             # Busca o tipo sanguineo no banco
-            grupo_tipo_sanguineo = select(TipoSanguineo.id).where(TipoSanguineo.tipo_sanguineo == tipo_sanguineo)
+            statement = select(TipoSanguineo.id).where(TipoSanguineo.tipo_sanguineo == tipo_sanguineo)
+            grupo_tipo_sanguineo = session.exec(statement).first()
 
             # Busca identificador do estado do estoque no banco
-            estado_do_estoque_hoje = estados_de_estoque[estoque_do_dia]
+            estado_do_estoque_hoje = dict_estados_de_estoque_banco[estoque_do_dia]
 
             # Registra o novo estado no banco
             novo_registro = RegistroEstoqueHemosc(estado_do_estoque=estado_do_estoque_hoje,
