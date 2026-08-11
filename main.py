@@ -48,7 +48,7 @@ def crawler():
 
     with sync_playwright() as p:
         # Headless false para rodar localmente, true para rodar no actions
-        browser = p.firefox.launch(headless=False)
+        browser = p.firefox.launch(headless=True)
 
         context = browser.new_context(
             user_agent=(
