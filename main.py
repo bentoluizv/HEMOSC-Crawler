@@ -56,6 +56,7 @@ def crawler():
                 ' (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             ),
             viewport={'width': 1280, 'height': 720},
+            ignore_https_errors=True,
         )
 
         page = context.new_page()
